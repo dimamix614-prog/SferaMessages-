@@ -19,7 +19,7 @@ const RULES=[
 ['1.9','Выдача себя за другого / Impersonation','ban',4320],['1.10','Обход бана / Ban evasion','ban',FOREVER/MIN]];
 const SYS={id:'sys',name:'SFERA',verified:true,role:'user'};
 let CUR=null;
-const pub=u=>u&&({id:u.id,name:u.name,username:u.username,role:u.role,verified:!!u.verified,scam:u.scam||null,bio:u.bio||'',av:(u.avPerm==='none'&&!(CUR&&CUR.id===u.id))?0:(u.av||0),seen:(u.seenPerm||'all')==='all'?u.seen||0:0,on:(u.seenPerm||'all')==='all'&&(socks.get(u.id)||[]).length>0,hide:u.seenPerm==='none',rc:u.seenPerm==='recent'?(Date.now()-(u.seen||0)<2592e5?'r':'l'):undefined,since:u.ts||0});
+const pub=u=>u&&({id:u.id,name:u.name,username:u.username,role:u.role,verified:!!u.verified,scam:u.scam||null,bio:u.bio||'',av:(u.avPerm==='none'&&!(CUR&&CUR.id===u.id))?0:(u.av||0),avv:(u.avPerm==='none'&&!(CUR&&CUR.id===u.id))?0:(u.avv||0),avx:u.avvext||'webm',seen:(u.seenPerm||'all')==='all'?u.seen||0:0,on:(u.seenPerm||'all')==='all'&&(socks.get(u.id)||[]).length>0,hide:u.seenPerm==='none',rc:u.seenPerm==='recent'?(Date.now()-(u.seen||0)<2592e5?'r':'l'):undefined,since:u.ts||0});
 const fr=m=>m.uid==='sys'?SYS:pub(d.users[m.uid]);
 const sp=u=>u.storyPerm||(u.role==='owner'?'all':'contacts');
 const canSee=(v,o)=>v.id===o.id||sp(o)==='all'||(sp(o)==='contacts'&&Object.values(d.chats).some(c=>c.type==='dm'&&c.members.includes(v.id)&&c.members.includes(o.id)));
@@ -39,7 +39,7 @@ const pushTo=(uids,pl,cid)=>{if(!WP)return;uids.forEach(uid=>{const u=d.users[ui
  const p=u.nprev===false&&!pl.call?{...pl,body:'Новое сообщение / New message'}:pl;
  (u.push||[]).forEach(sub=>WP.sendNotification(sub,JSON.stringify(p)).catch(e=>{if(e.statusCode===404||e.statusCode===410){u.push=(u.push||[]).filter(x=>x.endpoint!==sub.endpoint);save()}}))})};
 const kindLabel=m=>m.kind==='text'?String(m.text||'').slice(0,100):m.kind==='sticker'?'Стикер / Sticker':m.kind==='photo'?'Фото / Photo':m.kind==='file'?(m.fname||'Файл / File'):m.kind==='voice'?'Голосовое / Voice':m.kind==='circle'?'Видеосообщение / Video':'Сообщение / Message';
-const chatView=(c,me)=>{const v={id:c.id,type:c.type,title:c.title,slug:c.slug,verified:!!c.verified,scam:c.scam||null,admin:c.admin,admins:c.admins||[],arch:!!(c.arch&&c.arch[me.id]),pin:c.pin||null,joined:c.members.includes(me.id),desc:c.desc||'',av:c.av||0,priv:!!c.priv,subs:c.members.length,isadm:ia(c,me),req:ia(c,me)?(c.req||[]).length:0,pending:(c.req||[]).includes(me.id),muted:!!(c.mute&&c.mute[me.id]),unread:c.members.includes(me.id)?d.msgs.filter(m=>m.cid===c.id&&m.uid!==me.id&&!m.deleted&&m.ts>((c.read||{})[me.id]||0)&&!(m.hide||[]).includes(me.id)).length:0};
+const chatView=(c,me)=>{const v={id:c.id,type:c.type,title:c.title,slug:c.slug,verified:!!c.verified,scam:c.scam||null,admin:c.admin,admins:c.admins||[],arch:!!(c.arch&&c.arch[me.id]),pin:c.pin||null,joined:c.members.includes(me.id),desc:c.desc||'',av:c.av||0,priv:!!c.priv,subs:c.members.length,isadm:ia(c,me),req:ia(c,me)?(c.req||[]).length:0,pending:(c.req||[]).includes(me.id),muted:!!(c.mute&&c.mute[me.id]),pinned:(me.pinned||[]).includes(c.id),unread:c.members.includes(me.id)?d.msgs.filter(m=>m.cid===c.id&&m.uid!==me.id&&!m.deleted&&m.ts>((c.read||{})[me.id]||0)&&!(m.hide||[]).includes(me.id)).length:0};
  if(c.type==='dm')v.peer=pub(d.users[c.members.find(x=>x!==me.id)]||d.users[me.id]);
  const l=[...d.msgs].reverse().find(m=>m.cid===c.id&&!m.deleted&&!(m.hide||[]).includes(me.id));v.last=l||null;return v};
 const canPost=(c,u)=>c.type==='system'?false:c.type!=='channel'||c.admin===u.id||(c.admins||[]).includes(u.id);
@@ -134,7 +134,10 @@ react(b,u){const m=d.msgs.find(x=>x.id===b.mid),c=m&&d.chats[m.cid];if(!c||!c.me
  const r=m.re=m.re||{},had=(r[b.e]||[]).includes(u.id);for(const e in r){r[e]=r[e].filter(x=>x!==u.id);if(!r[e].length)delete r[e]}
  if(!had)(r[b.e]=r[b.e]||[]).push(u.id);upd(m);save();return{}},
 profile(b,u){if(b.name)u.name=String(b.name).slice(0,40);if(b.nprev!=null)u.nprev=!!b.nprev;if(['all','recent','none'].includes(b.seenPerm))u.seenPerm=b.seenPerm;if(['all','none'].includes(b.avPerm))u.avPerm=b.avPerm;if(['contacts','all','none'].includes(b.storyPerm))u.storyPerm=b.storyPerm;if(['all','ask','none'].includes(b.callPerm))u.callPerm=b.callPerm;if(['all','contacts','none'].includes(b.msgPerm))u.msgPerm=b.msgPerm;if(b.bio!=null)u.bio=String(b.bio).slice(0,200);
- if(b.avatar){const bf=Buffer.from(String(b.avatar).split(',')[1]||'','base64');if(bf.length&&bf.length<2e5){fs.writeFileSync(path.join(UP,'a_'+u.id+'.jpg'),bf);u.av=Date.now()}}save();return{}},
+ if(b.username!=null){const un=String(b.username).toLowerCase().replace(/^@/,'');if(!/^[a-z0-9_]{3,20}$/.test(un))throw'Username: латиница, цифры, _ (3-20) / Latin, digits, _ (3-20)';if(un!==u.username&&un==='sfera'&&u.role!=='owner')throw'Username зарезервирован / reserved';if(un!==u.username&&Object.values(d.users).some(x=>x.username===un))throw'Username занят / taken';u.username=un}
+ if(b.avatar){const bf=Buffer.from(String(b.avatar).split(',')[1]||'','base64');if(bf.length&&bf.length<2e5){const cur=path.join(UP,'a_'+u.id+'.jpg');if(u.av&&fs.existsSync(cur)){fs.copyFileSync(cur,path.join(UP,'a_'+u.id+'_'+u.av+'.jpg'));(u.avh=u.avh||[]).push(u.av);u.avh=u.avh.slice(-30)}fs.writeFileSync(cur,bf);u.av=Date.now()}}
+ if(b.avvid){const mm=/^data:video\/(webm|mp4);base64,/.exec(String(b.avvid));if(!mm)throw'Видео: webm или mp4 / video: webm or mp4';const bf=Buffer.from(String(b.avvid).split(',')[1]||'','base64');if(!bf.length||bf.length>3e6)throw'Видео до 3 МБ / video up to 3 MB';const ext=mm[1]==='mp4'?'mp4':'webm';fs.writeFileSync(path.join(UP,'v_'+u.id+'.'+ext),bf);u.avv=Date.now();u.avvext=ext}
+ save();return{}},
 feedback(b,u){(d.fb=d.fb||[]).push({uid:u.id,text:String(b.text||'').slice(0,2000),ts:Date.now()});save();return{}},
 feedbacks(b,u){staff(u);return{list:(d.fb||[]).slice(-50).reverse().map(f=>({...f,user:pub(d.users[f.uid])}))}},
 users(b,u){staff(u);return{users:Object.values(d.users).map(x=>({...pub(x),ban:x.banUntil>Date.now(),mute:x.muteUntil>Date.now()}))}},
@@ -196,6 +199,9 @@ pushsub(b,u){const s=b.sub;if(!s||!s.endpoint)throw'Bad';u.push=(u.push||[]).fil
 pushoff(b,u){u.push=(u.push||[]).filter(x=>x.endpoint!==String(b.endpoint||''));save();return{}}});
 const SW=`self.addEventListener('push',e=>{let d={};try{d=e.data.json()}catch(x){}e.waitUntil(self.registration.showNotification(d.title||'SFERA',{body:d.body||'',icon:'/icon.png',badge:'/icon.png',tag:d.cid||'sfera',renotify:true,vibrate:d.call?[400,200,400,200,400]:[150,80,150],data:{cid:d.cid}}))});
 self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>{for(const c of l){if('focus' in c)return c.focus()}return clients.openWindow('/')}))});`;
+Object.assign(A,{
+avhist(b,u){const o=d.users[b.uid];if(!o)throw'No user';const self=o.id===u.id;if(o.avPerm==='none'&&!self)return{list:[]};const l=[];if(o.av)l.push({url:'/uploads/a_'+o.id+'.jpg?'+o.av,ts:o.av,cur:true});(o.avh||[]).slice().reverse().forEach(ts=>l.push({url:'/uploads/a_'+o.id+'_'+ts+'.jpg',ts,cur:false}));return{list:l}},
+pinchat(b,u){const c=d.chats[b.cid];if(!c||!c.members.includes(u.id))throw'403';u.pinned=(u.pinned||[]).filter(x=>x!==c.id);if(b.on)u.pinned.unshift(c.id);save();return{}}});
 const OPEN=['reg','login','login2'],BANOK=['me','appeal'];
 const srv=http.createServer((q,r)=>{
  const ip=(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim(),j=(c,o)=>{r.writeHead(c,{'Content-Type':'application/json'});r.end(JSON.stringify(o))};
@@ -206,7 +212,7 @@ const srv=http.createServer((q,r)=>{
    if(!A[b.a])return j(404,{error:'?'});j(200,A[b.a](b,u,ip,q.headers['user-agent'],q.headers['x-token']))}catch(e){j(400,{error:String(e&&e.message||e)})}});return}
  if(q.url.startsWith('/uploads/')){const n=path.basename(q.url.split('?')[0]),f=path.join(UP,n);if(!fs.existsSync(f)){r.writeHead(404);return r.end()}
   const ava=/^[as]_/.test(n),mm=ava?null:d.msgs.find(m=>m.file===n);if(mm&&mm.once){r.writeHead(403);return r.end()}
-  const h={'Content-Type':n.endsWith('.a.webm')?'audio/webm':ava||n.endsWith('.p.jpg')?'image/jpeg':mm&&mm.kind==='file'?'application/octet-stream':'video/webm','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'};
+  const h={'Content-Type':n.endsWith('.mp4')?'video/mp4':n.endsWith('.a.webm')?'audio/webm':ava||n.endsWith('.p.jpg')?'image/jpeg':mm&&mm.kind==='file'?'application/octet-stream':'video/webm','Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'};
   if(mm&&mm.kind==='file')h['Content-Disposition']="attachment; filename*=UTF-8''"+encodeURIComponent(mm.fname||n);
   r.writeHead(200,h);return fs.createReadStream(f).pipe(r)}
  if(q.url==='/sw.js'){r.writeHead(200,{'Content-Type':'application/javascript','Service-Worker-Allowed':'/','Cache-Control':'no-cache'});return r.end(SW)}
